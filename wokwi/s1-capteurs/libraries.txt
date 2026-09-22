@@ -1,0 +1,6 @@
+# Bibliotheques Arduino chargees par Wokwi pour ce projet.
+# Une ligne par bibliotheque, meme nom que dans le gestionnaire Arduino.
+DHT sensor library
+Adafruit Unified Sensor
+Adafruit SSD1306
+Adafruit GFX Library

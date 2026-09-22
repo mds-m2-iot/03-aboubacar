@@ -1,0 +1,58 @@
+# ---------------------------------------------------------------------
+#  Ce qui ne part JAMAIS dans le depot.
+#  La regle se verifie en seance 6 avec l'analyse statique : un secret
+#  retire du code mais present dans l'historique reste trouvable.
+# ---------------------------------------------------------------------
+
+# ------------------------------------------------------------ secrets
+# Tous les .env, sans exception. Seul un .env.example, qui ne contient
+# que des noms de cles, a sa place dans un depot.
+.env
+.env.*
+!.env.example
+
+# Cles de signature et profils d'approvisionnement.
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem
+
+# ----------------------------------------------------------- firmware
+# PlatformIO reconstruit tout ce dossier a la demande. Il pese plusieurs
+# centaines de megaoctets une fois la chaine de compilation telechargee.
+.pio/
+
+# -------------------------------------------------------- application
+# Ton application Expo, quel que soit le nom que tu lui donnes.
+node_modules/
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+.metro-health-check*
+
+# Dossiers natifs regeneres par « npx expo prebuild » : ils se
+# reconstruisent a la demande, ils n'ont rien a faire dans le depot.
+/ios
+/android
+.kotlin/
+*.orig.*
+*.apk
+*.aab
+
+# -------------------------------------------------------------- outils
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+*.tsbuildinfo
+coverage/
+__pycache__/
+
+# Reglages personnels de l'editeur, propres a chaque poste.
+.vscode/
+
+# ------------------------------------------------------------- systeme
+.DS_Store
+Thumbs.db

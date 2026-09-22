@@ -1,0 +1,8 @@
+# Bibliotheques Arduino chargees par Wokwi pour ce projet.
+# PubSubClient assure la partie MQTT, ArduinoJson la charge utile.
+DHT sensor library
+Adafruit Unified Sensor
+Adafruit SSD1306
+Adafruit GFX Library
+PubSubClient
+ArduinoJson

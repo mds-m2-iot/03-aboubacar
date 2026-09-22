@@ -1,0 +1,6 @@
+# Configuration du simulateur Wokwi pour VS Code.
+# Les deux fichiers sont dans ce dossier : rien a compiler.
+[wokwi]
+version = 1
+firmware = 'firmware.bin'
+elf = 'firmware.elf'

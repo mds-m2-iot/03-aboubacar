@@ -1,0 +1,64 @@
+# =====================================================================
+#  wokwi.toml · simuler le VRAI firmware, sans file d'attente
+# =====================================================================
+#  Wokwi existe sous deux formes. Sur wokwi.com, le code est compilé par
+#  les serveurs de Wokwi, dans une file d'attente partagee entre tous
+#  les comptes gratuits : quand ils saturent, la simulation ne demarre
+#  pas du tout. L'extension « Wokwi for VS Code » fait l'inverse : elle
+#  simule un binaire deja compile sur le poste, ici par PlatformIO.
+#  Aucune file d'attente, et surtout aucune connexion necessaire une
+#  fois la licence obtenue.
+#
+#  L'interet pedagogique depasse le confort. Sur wokwi.com, on simule le
+#  sketch de wokwi/s1-capteurs, qui est une version simplifiee. Ici, on
+#  simule exactement le firmware qui sera flashe sur la carte en
+#  seance 2, avec les memes broches, les memes seuils et la meme logique
+#  d'humeur. Un seul code, deux facons de l'executer.
+#
+#  Marche a suivre :
+#      1. Installer l'extension « Wokwi Simulator » dans VS Code.
+#      2. F1, « Wokwi: Request a new License », puis suivre le lien.
+#         La licence est gratuite et se demande une seule fois.
+#      3. Compiler le mode voulu :   py -m platformio run -e ble
+#      4. F1, « Wokwi: Start Simulator ».
+#
+#  -------------------------------------------------------------------
+#  POURQUOI UN QUATRIEME ENVIRONNEMENT, « SIMU »
+#  -------------------------------------------------------------------
+#  Wokwi ne simule pas le Bluetooth. Le mode ble initialise NimBLE au
+#  demarrage, la tache btController cherche un controleur radio qui
+#  n'existe pas, ne rend jamais la main, et le chien de garde finit par
+#  tuer le systeme :
+#
+#      E task_wdt: Task watchdog got triggered
+#      E task_wdt:  - IDLE0 (CPU 0)
+#      E task_wdt: CPU 0: btController
+#      abort() was called
+#
+#  La carte redemarre alors en boucle, toutes les six secondes. Le mode
+#  dual a le meme probleme, puisqu'il allume aussi la radio.
+#
+#  Attention : le mode demo garde lui aussi le Bluetooth, et le contrat
+#  le prevoit expressement. C'est ce qui permet au telephone dedie des
+#  portes ouvertes d'afficher la plante sans serveur ni reseau. Aucun
+#  des trois modes livres ne se simule donc.
+#
+#  D'ou l'environnement « simu » de platformio.ini : le mode capteurs
+#  prive de radio, produit uniquement pour le simulateur. Il ne sert
+#  jamais sur du vrai materiel.
+#
+#  Il part du mode capteurs et non du mode demo, et ce choix compte :
+#  l'atelier de la seance 1 demande de faire varier les mesures a la
+#  souris. Le mode demo rejoue une journee enregistree sans lire les
+#  capteurs, si bien que tourner le potentiometre n'y changerait rien.
+#  Le mode capteurs, lui, reste interactif.
+#
+#  Marche a suivre complete, depuis la racine du depot :
+#      py -m platformio run -e simu -d <dossier du firmware>
+#      py outils/fusionner_image.py simu <dossier du firmware>
+#  puis F1, « Wokwi: Start Simulator », le dossier du firmware ouvert.
+# =====================================================================
+[wokwi]
+version = 1
+firmware = '.pio/build/simu/merged.bin'
+elf = '.pio/build/simu/firmware.elf'
