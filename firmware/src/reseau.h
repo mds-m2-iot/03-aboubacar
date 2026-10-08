@@ -173,15 +173,20 @@ public:
         //        pendant vivant du testament.
         //     6. Supprime l'appel A_ECRIRE.
         // -------------------------------------------------------------
+        String sujetStatut = prefixe + "/statut";
+        const char* testament = "{\"en_ligne\":false}";
         bool ok;
         if (strlen(MQTT_UTILISATEUR) > 0) {
-            ok = mqtt.connect(idClient.c_str(), MQTT_UTILISATEUR, MQTT_MOTDEPASSE);
+            ok = mqtt.connect(idClient.c_str(), MQTT_UTILISATEUR, MQTT_MOTDEPASSE,
+                              sujetStatut.c_str(), 1, true, testament);
         } else {
-            ok = mqtt.connect(idClient.c_str());
+            ok = mqtt.connect(idClient.c_str(),
+                              sujetStatut.c_str(), 1, true, testament);
         }
         if (ok) {
             Serial.printf("[MQTT] connecte · %s\r\n", prefixe.c_str());
-            A_ECRIRE(3, 6, "le testament, le message retenu et l'abonnement aux commandes");
+            mqtt.subscribe((prefixe + "/cmd").c_str(), 1);
+            publierStatut(true);
         } else {
             Serial.printf("[ERR ] MQTT refuse · code %d · %s\r\n",
                           mqtt.state(), expliquerEtatMqtt(mqtt.state()));
@@ -242,8 +247,26 @@ public:
         //        qui porte les deux valeurs du convertisseur.
         //     6. Supprime l'appel A_ECRIRE.
         // -------------------------------------------------------------
-        (void)m;
-        A_ECRIRE(3, 7, "publier les mesures sur les sujets du contrat");
+        publierNombre("/humidite",    m.humidite);
+        publierNombre("/temperature", m.temperature);
+        publierNombre("/lumiere",     m.lumiere);
+
+        JsonDocument doc;
+        doc["humidite"]     = arrondi(m.humidite);
+        doc["temperature"]  = arrondi(m.temperature);
+        doc["lumiere"]      = arrondi(m.lumiere);
+        doc["humidite_air"] = arrondi(m.humiditeAir);
+        doc["humeur"]       = nomHumeur(m.humeur);
+        doc["uptime"]       = millis();
+        doc["version"]      = VERSION_FIRMWARE;
+        String s; serializeJson(doc, s);
+        mqtt.publish((prefixe + "/mesures").c_str(), s.c_str(), false);
+
+        JsonDocument brut;
+        brut["humidite"] = m.brutHumidite;
+        brut["lumiere"]  = m.brutLumiere;
+        String b; serializeJson(brut, b);
+        mqtt.publish((prefixe + "/brut").c_str(), b.c_str(), false);
     }
 
     String jsonStatut(bool enLigne) {

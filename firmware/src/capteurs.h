@@ -79,8 +79,13 @@ public:
         //     4. Supprime le return analogRead(broche) qui suit, et l'appel
         //        A_ECRIRE juste au dessus.
         // -------------------------------------------------------------
-        A_ECRIRE(2, 1, "la moyenne de trois lectures, dans capteurs.h");
-        return analogRead(broche);
+
+        long somme = 0; 
+        for (int i = 0; i < 3; ++i) {
+            somme += analogRead(broche);
+            delay(4);
+        }
+        return (int)(somme / 3); 
     }
 
     Mesures lire() {

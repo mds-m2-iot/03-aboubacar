@@ -92,8 +92,19 @@ public:
         //        personne.
         //     5. Supprime l'appel A_ECRIRE.
         // -------------------------------------------------------------
-        (void)m;
-        A_ECRIRE(2, 4, "remplir et notifier les caracteristiques, dans bluetooth.h");
+            uint16_t hum = (uint16_t)(m.humidite * 100);
+            int16_t temp = (int16_t)(m.temperature * 100);
+            uint16_t lum = (uint16_t)(m.lumiere * 100);
+                
+            cHumidite->setValue((uint8_t*)&hum, 2);
+            cTemperature->setValue((uint8_t*)&temp, 2);
+            cLumiere->setValue((uint8_t*)&lum, 2);
+
+            if (abonnes > 0) {
+                cHumidite->notify();
+                cTemperature->notify();
+                cLumiere->notify();
+            }
     }
 
     void majStatut(const String& json) { if (cStatut) cStatut->setValue(json.c_str()); }
@@ -106,43 +117,7 @@ public:
     void onDisconnect(NimBLEServer*) override {
         if (abonnes > 0) abonnes--;
         Serial.printf("[BLE ] deconnexion · %d abonne(s)\r\n", abonnes);
-        // -------------------------------------------------------------
-        //  TODO seance 2 . trou 5 . se rendre a nouveau visible
-        // -------------------------------------------------------------
-        //  Une seule ligne a ecrire. C'est la panne numero un de la
-        //  seance 2, et celle qui coute le plus de temps a ceux qui ne
-        //  la connaissent pas.
-        //
-        //  CE QUI SE PASSE SANS ELLE . une carte qui accepte une
-        //  connexion arrete d'annoncer sa presence, c'est le
-        //  fonctionnement normal du BLE. Quand le telephone se
-        //  deconnecte, plus personne n'annonce rien : la carte est
-        //  toujours allumee, la console affiche toujours ses mesures,
-        //  l'ecran fonctionne, et pourtant aucun scan ne la trouve plus.
-        //  Tout va bien, sauf qu'elle est devenue invisible.
-        //
-        //  Le symptome est trompeur au point qu'on soupconne d'abord le
-        //  telephone, puis l'application, puis le cable. Rappelle-toi
-        //  juste que ca marche une fois et une seule : c'est la
-        //  signature de ce trou-la.
-        //
-        //  A ecrire : relancer l'annonce, avec la methode statique de
-        //  NimBLEDevice.
-        //
-        //  MARCHE A SUIVRE
-        //     1. Decremente le compteur d'abonnes, avec une garde : ne descends
-        //        pas en dessous de zero. Une deconnexion peut arriver sans
-        //        connexion prealable dans certains cas de reprise, et un
-        //        compteur negatif fausserait le test du trou 4.
-        //     2. Affiche une ligne sur la console avec le nouveau compte. Elle
-        //        te servira a comprendre ce qui se passe pendant le TP.
-        //     3. Relance l'annonce. Une seule ligne, et c'est tout le trou. La
-        //        methode est statique : elle s'adresse a la pile Bluetooth et
-        //        non a un objet, donc elle s'appelle avec le nom de la classe
-        //        NimBLEDevice suivi de deux fois deux points.
-        //     4. Supprime l'appel A_ECRIRE.
-        // -------------------------------------------------------------
-        A_ECRIRE(2, 5, "relancer l'annonce apres une deconnexion, dans bluetooth.h");
+        NimBLEDevice::startAdvertising(); // relancer l'annonce apres une deconnexion
     }
 
     int nbAbonnes() const { return abonnes; }

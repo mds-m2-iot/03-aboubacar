@@ -47,9 +47,13 @@ inline Humeur calculerHumeur(float humidite, int seuilBas, int seuilHaut) {
     //        entre les deux seuils.
     //     5. Supprime le return HEUREUSE qui suit deja.
     // -----------------------------------------------------------------
-    (void)humidite; (void)seuilBas; (void)seuilHaut;
-    A_ECRIRE(2, 3, "les cinq humeurs, dans humeur.h");
+
+    if (humidite > seuilHaut + 15) return NOYEE;
+    if (humidite > seuilHaut) return REPUT;
+    if (humidite < seuilBas - 15) return ASSOIFFEE;
+    if (humidite < seuilBas) return SOIF;
     return HEUREUSE;
+
 }
 
 inline const char* nomHumeur(Humeur h) {
@@ -62,60 +66,25 @@ inline const char* nomHumeur(Humeur h) {
     }
 }
 
+
 inline const char* messageHumeur(Humeur h) {
     switch (h) {
-        case NOYEE:     return "Je nage, arrete un peu";
-        case REPUT:     return "J'ai un peu trop bu";
+        case NOYEE:     return "Je suis toute mouillee";
+        case REPUT:     return "Je suis pleine";
         case SOIF:      return "J'ai soif";
         case ASSOIFFEE: return "Au secours, de l'eau";
         default:        return "Tout va bien, merci";
     }
 }
 
+
 // Conversion d'une valeur brute du convertisseur en pourcentage.
 // Les deux capteurs du kit renvoient une valeur qui BAISSE quand la
 // grandeur mesuree monte : c'est contre-intuitif, et c'est normal.
 inline float versPourcentage(int brut, int borneBasse, int borneHaute) {
-    // -----------------------------------------------------------------
-    //  TODO seance 2 . trou 2 . du brut au pourcentage
-    // -----------------------------------------------------------------
-    //  A ecrire, dans cet ordre :
-    //    1. si les deux bornes sont egales, rendre 0 sans diviser ;
-    //    2. faire une regle de trois entre borneBasse et borneHaute ;
-    //    3. borner le resultat entre 0 et 100.
-    //
-    //  LE PIEGE . les deux capteurs du kit renvoient une valeur qui
-    //  BAISSE quand la grandeur mesuree MONTE. borneBasse est donc la
-    //  valeur brute du cas « sec » ou « sombre », qui est la PLUS
-    //  GRANDE des deux. Si tu ecris la regle de trois dans le sens
-    //  habituel, tu obtiens 100 % dans un pot sec, et tout le reste de
-    //  la chaine s'en trouve inverse jusqu'a l'ecran du telephone.
-    //
-    //  L'etape 1 n'est pas de la coquetterie : sans elle, un binome qui
-    //  calibre deux fois sur le meme point divise par zero, et la carte
-    //  redemarre en boucle sans dire pourquoi.
-    //
-    //  LE CONTROLE . a l'air libre tu dois lire 0 %, dans un verre
-    //  d'eau 100 %. Les valeurs brutes s'affichent a cote sur la
-    //  console, ce sont elles qui servent a calibrer.
-    //
-    //  MARCHE A SUIVRE
-    //     1. Commence par la garde. Si borneBasse vaut borneHaute, rends
-    //        0.0f tout de suite. Sans elle, la ligne suivante divise par
-    //        zero et la carte redemarre en boucle sans dire pourquoi.
-    //     2. Ecris la regle de trois dans une variable float. Le numerateur
-    //        est la distance entre le brut et la borne SECHE, le
-    //        denominateur est la distance entre les deux bornes. Pose les
-    //        deux valeurs de ta calibration sur un papier avant d'ecrire :
-    //        celle qui correspond a SEC est la PLUS GRANDE des deux, et
-    //        c'est ce qui surprend.
-    //     3. Transtype en (float) avant de diviser. Sans cela, C++ fait une
-    //        division entiere et te rend 0 ou 1.
-    //     4. Borne le resultat entre 0 et 100 avec deux si. Un capteur peut
-    //        lire hors de sa plage de calibration.
-    //     5. Rends la valeur, et supprime le return 0.0f qui suit.
-    // -----------------------------------------------------------------
-    (void)brut; (void)borneBasse; (void)borneHaute;
-    A_ECRIRE(2, 2, "la conversion du brut en pourcentage, dans humeur.h");
-    return 0.0f;
+    if (borneBasse == borneHaute) return 0.0f; // eviter une division par zero
+    float pourcentage = (float)(borneBasse - brut) * 100.0f / (float)(borneBasse - borneHaute);
+    if (pourcentage < 0.0f) pourcentage = 0.0f;
+    if (pourcentage > 100.0f) pourcentage = 100.0f;
+    return pourcentage;
 }

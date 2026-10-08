@@ -27,7 +27,7 @@
 // cette ligne, ce qui est utile pour verifier que les quatre compilent :
 //     pio run -e ble    pio run -e dual    pio run -e demo
 #ifndef MODE_FIRMWARE
-  #define MODE_FIRMWARE MODE_BLE
+  #define MODE_FIRMWARE MODE_DUAL
 #endif
 
 // ------------------------------------------------------- etat reseau
@@ -44,7 +44,7 @@
 // -------------------------------------------------------------- plante
 // Le nom annonce en Bluetooth. Deux binomes cote a cote ne doivent pas
 // avoir le meme, sinon personne ne sait quelle plante il connecte.
-#define NOM_PLANTE "Plante-Demo"
+#define NOM_PLANTE "Aboubacar"
 
 // Seuils de confort de l'espece, repris de la fiche d'identite de la plante.
 #define SEUIL_BAS   30    // en dessous, elle a soif
@@ -158,7 +158,7 @@
 // Le prefixe de sujet du binome. C'est le seul reglage qui doit etre
 // different d'un binome a l'autre, sinon les mesures se melangent
 // sans erreur et personne ne s'en apercoit avant les courbes.
-#define ID_BINOME      "binome-00"
+#define ID_BINOME      "binome-03"
 
 // ------------------------------------------------------- mise a jour
 // Renseigne en seance 6. Laisse vide, la carte ne cherche jamais de mise a jour.
