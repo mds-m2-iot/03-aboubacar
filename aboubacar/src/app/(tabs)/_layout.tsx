@@ -25,6 +25,10 @@ export default function TabLayout() {
         <NativeTabs.Trigger.Label>Réglages</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf="gearshape.fill" md="settings" />
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="carte">
+        <NativeTabs.Trigger.Label>Carte</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="map.fill" md="map" />
+      </NativeTabs.Trigger>
     </NativeTabs>
   );
 }

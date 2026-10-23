@@ -51,6 +51,8 @@ export const SUFFIXES_SUJET = [
   'statut',
   'brut',
   'cmd',
+  // la position approximative de la plante, publiée par l'application
+  'lieu',
 ] as const;
 
 export type SuffixeSujet = (typeof SUFFIXES_SUJET)[number];
@@ -120,6 +122,19 @@ export type ChargeStatut = {
 export type ChargeBrut = {
   humidite: number;
   lumiere: number;
+};
+
+/**
+ * Séance 6 · sujet « lieu », publié par l'APPLICATION, retenu par le
+ * broker. Une position volontairement approximative : jamais le GPS
+ * réel, arrondie au quartier ou choisie à la main. Un message vide
+ * retire la plante de la carte.
+ */
+export type ChargeLieu = {
+  lat: number;
+  lon: number;
+  /** Le petit nom à afficher sur la carte. */
+  nom: string;
 };
 
 /** Modes de fonctionnement du firmware (contrat, section 7). */

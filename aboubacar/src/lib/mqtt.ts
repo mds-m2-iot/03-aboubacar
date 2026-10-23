@@ -29,11 +29,13 @@ import {
   sujet,
   sujetJoker,
   suffixeDepuisSujet,
+  type ChargeLieu,
   type ChargeMesures,
   type ChargeStatut,
   type Commande,
 } from "./contrat";
 import type { EtatConnexion } from "./lien";
+import { parsePlace } from "./place";
 
 /** Ce que le client raconte au reste de l'application, via le magasin. */
 export type RappelsMqtt = {
@@ -42,6 +44,10 @@ export type RappelsMqtt = {
   surMesures: (charge: ChargeMesures) => void;
   /** L'objet du sujet « statut », testament du broker compris. */
   surStatut: (charge: ChargeStatut) => void;
+  /** Séance 6 · le lieu d'une plante de la promo, null quand elle est retirée de la carte. */
+  onPlace?: (id: string, place: ChargeLieu | null) => void;
+  /** Séance 6 · les mesures de toute la promo, seulement pendant que la carte est ouverte. */
+  onMapMeasures?: (id: string, charge: ChargeMesures) => void;
 };
 
 export type OptionsMqtt = {
@@ -59,6 +65,10 @@ export interface ClientMqtt {
   arreter: () => void;
   /** Séance 4 · publie une commande sur « cmd ». false si la connexion n'est pas établie. */
   publishCommand: (commande: Commande) => boolean;
+  /** Séance 6 · écoute les mesures de toute la promo, pour la carte. */
+  watchMap: (on: boolean) => void;
+  /** Séance 6 · publie le lieu, retenu ; null l'efface. false si la connexion n'est pas établie. */
+  publishPlace: (place: ChargeLieu | null) => boolean;
 }
 
 /** mqtt.js retente toutes les cinq secondes après une coupure. */
@@ -114,6 +124,11 @@ export function creerClientMqtt(
   // tentative suivante. Sans lui, « connexion en cours » efface la seule
   // phrase qui disait quoi corriger.
   let dernierMotif: string | null = null;
+  // Séance 6 · la carte : tous les lieux, tout le temps (des messages
+  // retenus, minuscules), et toutes les mesures seulement à la demande.
+  const SUJET_LIEUX = "plante/+/lieu";
+  const SUJET_TOUTES_MESURES = "plante/+/mesures";
+  let watchingMap = false;
 
   /** Donnée. Relaie un état, sauf après un arrêt demandé : un client
    *  qu'on ferme émet encore des évènements, qui ne doivent plus rien
@@ -207,6 +222,9 @@ export function creerClientMqtt(
     c.on('connect', () => {
       dernierMotif = null;
       signaler('connectee');
+      // Séance 6 · les lieux de toutes les plantes, pour la carte
+      c.subscribe(SUJET_LIEUX, { qos: 1 });
+      if (watchingMap) c.subscribe(SUJET_TOUTES_MESURES, { qos: 0 });
     });
     c.on('reconnect', () => {
       signaler('connexion', dernierMotif ?? undefined);
@@ -326,6 +344,7 @@ export function creerClientMqtt(
         // fermer, pas celui de l'écran de subir ses messages.
         if (arrete) return;
         try {
+          if (routeOtherPlant(sujet, charge)) return;
           surMessage(sujet, charge);
         } catch (erreur) {
           signaler(
@@ -374,5 +393,54 @@ export function creerClientMqtt(
     return true;
   }
 
-  return { demarrer, arreter, publishCommand };
+  /**
+   * Séance 6 · publie le lieu de ta plante, RETENU : la carte d'un
+   * nouveau venu le reçoit tout de suite. null publie un message vide,
+   * retenu lui aussi, qui efface le lieu chez tout le monde.
+   */
+  function publishPlace(place: ChargeLieu | null): boolean {
+    if (arrete || !client || !client.connected) return false;
+    client.publish(sujet(options.idBinome, "lieu"), place ? JSON.stringify(place) : "", {
+      qos: 1,
+      retain: true,
+    });
+    return true;
+  }
+
+  /**
+   * Séance 6 · aiguille les lieux, et les mesures des AUTRES plantes.
+   * Rend true quand le message est traité ici ; false pour laisser
+   * surMessage s'occuper de TA plante, exactement comme avant.
+   */
+  function routeOtherPlant(topic: string, charge: { toString(): string }): boolean {
+    // plante/<id>/<suffixe> : on découpe le sujet pour savoir de qui il parle.
+    const parts = topic.split("/");
+    if (parts.length !== 3 || parts[0] !== "plante") return false;
+    const [, id, suffix] = parts;
+    const raw = charge.toString();
+    if (suffix === "lieu") {
+      rappels.onPlace?.(id, parsePlace(raw));
+      return true;
+    }
+    if (suffix === "mesures" && watchingMap) {
+      try {
+        rappels.onMapMeasures?.(id, JSON.parse(raw) as ChargeMesures);
+      } catch {
+        // illisible : la carte garde l'ancienne humeur
+      }
+    }
+    // Ta plante continue son chemin habituel ; les autres s'arrêtent ici.
+    return id !== options.idBinome;
+  }
+
+  /** Séance 6 · ouvre ou ferme l'écoute de toute la promo. */
+  function watchMap(on: boolean): void {
+    if (on === watchingMap) return;
+    watchingMap = on;
+    if (!client?.connected) return;
+    if (on) client.subscribe(SUJET_TOUTES_MESURES, { qos: 0 });
+    else client.unsubscribe(SUJET_TOUTES_MESURES);
+  }
+
+  return { demarrer, arreter, publishCommand, watchMap, publishPlace };
 }

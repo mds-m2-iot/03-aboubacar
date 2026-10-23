@@ -10,6 +10,7 @@ import { CONFIG } from "../lib/config";
 import { FICHE } from "../lib/fiche";
 import { creerClientMqtt } from "../lib/mqtt";
 import { CACHE_MAX_AGE, persister, queryClient } from "../lib/queryClient";
+import { useMap } from "../store/map";
 import { usePlante } from "../store/plante";
 
 /**
@@ -37,7 +38,13 @@ function useSource(): void {
     }
 
     const client = creerClientMqtt(
-      { surEtat: definirEtatConnexion, surMesures: appliquerMesuresMqtt, surStatut: definirStatut },
+      {
+        surEtat: definirEtatConnexion,
+        surMesures: appliquerMesuresMqtt,
+        surStatut: definirStatut,
+        onPlace: (id, place) => useMap.getState().applyPlace(id, place),
+        onMapMeasures: (id, charge) => useMap.getState().applyMeasure(id, charge),
+      },
       {
         url: CONFIG.mqttUrl,
         idBinome: CONFIG.idBinome,
@@ -48,7 +55,16 @@ function useSource(): void {
     client.demarrer();
     // Séance 4 · les écrans envoient leurs commandes par ce client.
     usePlante.getState().setPublishCommand(client.publishCommand);
+    // Séance 6 · la carte : publier son lieu, et n'écouter toute la promo
+    // que pendant que l'écran de carte est ouvert.
+    useMap.getState().setPublishPlace(client.publishPlace);
+    client.watchMap(useMap.getState().watching);
+    const stopWatching = useMap.subscribe((state, previous) => {
+      if (state.watching !== previous.watching) client.watchMap(state.watching);
+    });
     return () => {
+      stopWatching();
+      useMap.getState().setPublishPlace(null);
       usePlante.getState().setPublishCommand(null);
       client.arreter();
     };

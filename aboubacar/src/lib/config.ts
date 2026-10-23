@@ -34,4 +34,7 @@ export const CONFIG = {
   influxBucket: process.env.EXPO_PUBLIC_INFLUX_BUCKET ?? '',
   /** Même statut que le mot de passe du broker : en clair, en attendant la séance 5. */
   influxToken: process.env.EXPO_PUBLIC_INFLUX_TOKEN ?? '',
+
+  // Séance 6 · la carte : un jeton PUBLIC Mapbox (pk.…), jamais un jeton secret.
+  mapboxToken: process.env.EXPO_PUBLIC_MAPBOX_TOKEN ?? '',
 } as const;
