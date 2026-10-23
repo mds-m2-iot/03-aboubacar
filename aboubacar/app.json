@@ -51,7 +51,8 @@
           ],
           "bluetoothAlwaysUsageDescription": "L'application lit les mesures de la plante en Bluetooth"
         }
-      ]
+      ],
+      "@rnmapbox/maps"
     ],
     "experiments": {
       "typedRoutes": true
