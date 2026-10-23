@@ -12,7 +12,15 @@ import Svg, {
 } from 'react-native-svg';
 
 import { FICHE } from '../lib/fiche';
-import { splitIntoSegments, type HistoryPoint, type SegmentPoint } from '../lib/influx';
+import {
+  countDryPeriods,
+  movingAverage,
+  PERIODS,
+  splitIntoSegments,
+  type HistoryPoint,
+  type Period,
+  type SegmentPoint,
+} from '../lib/influx';
 import { COULEURS, ESPACES } from '../lib/theme';
 
 // =====================================================================
@@ -29,13 +37,14 @@ const MARGE_HAUT = 10;
 const MARGE_BAS = 24;
 const GRADUATIONS = [0, 50, 100];
 const JOURS = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'];
+/** Six points de large : une demi-journée en vue Quinzaine, une heure en vue Jour. */
+const AVERAGE_SIZE = 6;
 
 type Props = {
   points: HistoryPoint[];
   /** Fin de l'axe des temps : query.dataUpdatedAt. */
   fin: number;
-  durationMs: number;
-  everyMs: number;
+  period: Period;
 };
 
 /** M sur le premier point, L vers chacun des suivants. */
@@ -64,11 +73,35 @@ function deuxChiffres(n: number): string {
   return n < 10 ? `0${n}` : `${n}`;
 }
 
-/** Libellé d'instant : l'heure sur un jour, le jour au-delà. Heure locale du téléphone. */
-function libelleTemps(time: number, durationMs: number): string {
-  const d = new Date(time);
-  if (durationMs <= 24 * 3600 * 1000) return `${deuxChiffres(d.getHours())}h${deuxChiffres(d.getMinutes())}`;
-  return `${JOURS[d.getDay()]} ${d.getDate()}`;
+/**
+ * L'axe du temps de chaque période (corrigé) : une graduation toutes les
+ * everyHours heures, et la façon de l'écrire. Fait à la main plutôt
+ * qu'avec Intl, dont le support varie selon le moteur JS.
+ */
+const TIME_AXIS: Record<Period, { everyHours: number; format: (d: Date) => string }> = {
+  day: { everyHours: 6, format: (d) => `${deuxChiffres(d.getHours())} h` },
+  week: { everyHours: 24, format: (d) => JOURS[d.getDay()] },
+  fortnight: {
+    everyHours: 48,
+    format: (d) => `${deuxChiffres(d.getDate())}/${deuxChiffres(d.getMonth() + 1)}`,
+  },
+};
+
+/**
+ * Les instants des graduations entre start et end, calés sur des heures
+ * rondes (ou sur minuit pour les graduations en jours), en heure locale.
+ * On avance avec setHours : un changement d'heure ne décale rien.
+ */
+function timeTicks(start: number, end: number, everyHours: number): number[] {
+  const d = new Date(start);
+  d.setMinutes(0, 0, 0);
+  d.setHours(everyHours >= 24 ? 0 : Math.ceil(d.getHours() / everyHours) * everyHours);
+  const ticks: number[] = [];
+  while (d.getTime() <= end) {
+    if (d.getTime() >= start) ticks.push(d.getTime());
+    d.setHours(d.getHours() + everyHours);
+  }
+  return ticks;
 }
 
 /** Libellé précis du point lu sous le doigt : le jour en plus au-delà d'un jour. */
@@ -79,7 +112,8 @@ function libelleInstant(time: number, durationMs: number): string {
   return `${JOURS[d.getDay()]} ${d.getDate()} · ${heure}`;
 }
 
-export function CourbeHumidite({ points, fin, durationMs, everyMs }: Props) {
+export function CourbeHumidite({ points, fin, period }: Props) {
+  const { durationMs, everyMs, every } = PERIODS[period];
   const [largeur, setLargeur] = useState(0);
   const [doigtX, setDoigtX] = useState<number | null>(null);
 
@@ -111,6 +145,19 @@ export function CourbeHumidite({ points, fin, durationMs, everyMs }: Props) {
   const moyenne = valeurs.reduce((s, p) => s + p.value, 0) / Math.max(valeurs.length, 1);
   const { bas, haut } = FICHE.seuils;
   const dansLaZone = affiche ? affiche.value >= bas && affiche.value <= haut : false;
+
+  // La moyenne glissante, calculée segment par segment : elle ne
+  // traverse jamais un trou. Les oublis d'arrosage : les passages SOUS
+  // le seuil bas, un passage comptant pour un oubli.
+  const moyennes = segments.map((s) => movingAverage(s, AVERAGE_SIZE));
+  const oublis = countDryPeriods(segments, bas);
+
+  // Les graduations trop près des bords sont écartées : leur texte,
+  // centré sur l'instant, déborderait du dessin.
+  const axe = TIME_AXIS[period];
+  const ticks = timeTicks(debut, fin, axe.everyHours).filter(
+    (t) => x(t) > MARGE_GAUCHE + 14 && x(t) < largeur - 14,
+  );
 
   const suivreDoigt = (xDoigt: number) =>
     setDoigtX(Math.min(Math.max(xDoigt, MARGE_GAUCHE), largeur));
@@ -201,21 +248,47 @@ export function CourbeHumidite({ points, fin, durationMs, everyMs }: Props) {
             {segments.map((s, i) =>
               s.length > 1 ? <Path key={`a-${i}`} d={toAire(s, x, y)} fill="url(#aire)" /> : null,
             )}
+            {/* Le seuil bas de l'espèce, en pointillés. */}
+            <Line
+              x1={MARGE_GAUCHE}
+              x2={largeur}
+              y1={y(bas)}
+              y2={y(bas)}
+              stroke={COULEURS.gris}
+              strokeWidth={1}
+              strokeDasharray="4 4"
+            />
+
+            {/* Les mesures, en trait fin : le détail, trou compris. */}
             {segments.map((s, i) =>
               s.length > 1 ? (
                 <Path
                   key={`l-${i}`}
                   d={toPath(s, x, y)}
-                  stroke={COULEURS.accent}
-                  strokeWidth={2.5}
+                  stroke={COULEURS.texte}
+                  strokeOpacity={0.45}
+                  strokeWidth={1.5}
                   strokeLinejoin="round"
-                  strokeLinecap="round"
                   fill="none"
                 />
               ) : (
                 // Un morceau d'un seul point n'a pas de longueur : un point le montre.
-                <Circle key={`l-${i}`} cx={x(s[0].time)} cy={y(s[0].value)} r={2.5} fill={COULEURS.accent} />
+                <Circle key={`l-${i}`} cx={x(s[0].time)} cy={y(s[0].value)} r={2.5} fill={COULEURS.texte} />
               ),
+            )}
+            {/* La moyenne glissante, en trait épais : la tendance. */}
+            {moyennes.map((s, i) =>
+              s.length > 1 ? (
+                <Path
+                  key={`m-${i}`}
+                  d={toPath(s, x, y)}
+                  stroke={COULEURS.accent}
+                  strokeWidth={3}
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                  fill="none"
+                />
+              ) : null,
             )}
 
             {/* Le dernier point, cerclé de la couleur du fond pour se détacher. */}
@@ -256,22 +329,29 @@ export function CourbeHumidite({ points, fin, durationMs, everyMs }: Props) {
               </>
             )}
 
-            {/* Trois repères de temps sous l'axe. */}
-            {[debut, debut + durationMs / 2].map((t, i) => (
+            {/* L'axe du temps : un repère et une date par graduation. */}
+            {ticks.map((t) => (
+              <Line
+                key={`tick-${t}`}
+                x1={x(t)}
+                x2={x(t)}
+                y1={y(0)}
+                y2={y(0) + 4}
+                stroke={COULEURS.gris}
+              />
+            ))}
+            {ticks.map((t) => (
               <SvgText
-                key={`x-${i}`}
+                key={`date-${t}`}
                 x={x(t)}
                 y={HAUTEUR - 6}
                 fontSize={11}
                 fill={COULEURS.gris}
-                textAnchor={i === 0 ? 'start' : 'middle'}
+                textAnchor="middle"
               >
-                {libelleTemps(t, durationMs)}
+                {axe.format(new Date(t))}
               </SvgText>
             ))}
-            <SvgText x={largeur} y={HAUTEUR - 6} fontSize={11} fill={COULEURS.gris} textAnchor="end">
-              maintenant
-            </SvgText>
           </Svg>
         )}
       </View>
@@ -279,8 +359,12 @@ export function CourbeHumidite({ points, fin, durationMs, everyMs }: Props) {
       {/* Légende : chaque marque est nommée, la couleur ne parle pas seule. */}
       <View style={styles.legende}>
         <View style={styles.legendeItem}>
+          <View style={styles.legendeMesure} />
+          <Text style={styles.legendeTexte}>Mesure, moyenne par {every}</Text>
+        </View>
+        <View style={styles.legendeItem}>
           <View style={styles.legendeTrait} />
-          <Text style={styles.legendeTexte}>Humidité</Text>
+          <Text style={styles.legendeTexte}>Tendance</Text>
         </View>
         <View style={styles.legendeItem}>
           <View style={styles.legendeZone} />
@@ -307,6 +391,11 @@ export function CourbeHumidite({ points, fin, durationMs, everyMs }: Props) {
           </View>
         ))}
       </View>
+      <Text style={styles.bilan}>
+        {oublis === 0
+          ? `Aucun passage sous ${bas} % sur la période.`
+          : `${oublis} passage${oublis > 1 ? 's' : ''} sous ${bas} % : ${oublis > 1 ? 'autant' : 'un'} oubli${oublis > 1 ? 's' : ''} d'arrosage.`}
+      </Text>
     </View>
   );
 }
@@ -345,9 +434,11 @@ const styles = StyleSheet.create({
     marginTop: ESPACES.petit,
   },
   legendeItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  legendeMesure: { width: 16, height: 2, borderRadius: 1, backgroundColor: COULEURS.texte, opacity: 0.45 },
   legendeTrait: { width: 16, height: 3, borderRadius: 2, backgroundColor: COULEURS.accent },
   legendeZone: { width: 16, height: 10, borderRadius: 3, backgroundColor: COULEURS.tacheSauge },
   legendeTexte: { fontSize: 12, color: COULEURS.gris },
+  bilan: { marginTop: ESPACES.moyen, fontSize: 14, lineHeight: 20, color: COULEURS.texte },
   stats: {
     flexDirection: 'row',
     marginTop: ESPACES.moyen,

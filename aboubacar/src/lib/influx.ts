@@ -59,6 +59,11 @@ export type HistoryPoint = {
  * pairId et bucket viennent du .env : un guillemet glissé dedans fermerait
  * la chaîne Flux et permettrait d'écrire la suite de la requête.
  */
+/** L'adresse de la base sans barre finale : « …/ » suivi de « /api » donnerait « //api ». */
+function baseUrl(): string {
+  return CONFIG.influxUrl.replace(/\/+$/, "");
+}
+
 function sanitize(value: string): string {
   return value.replace(/[^A-Za-z0-9_.:-]/g, "");
 }
@@ -163,7 +168,7 @@ export async function fetchHistory(
   }
 
   const response = await fetch(
-    `${CONFIG.influxUrl}/api/v2/query?org=${encodeURIComponent(CONFIG.influxOrg)}`,
+    `${baseUrl()}/api/v2/query?org=${encodeURIComponent(CONFIG.influxOrg)}`,
     {
       method: "POST",
       headers: {
@@ -198,7 +203,7 @@ export async function checkInflux(signal?: AbortSignal): Promise<"en ligne"> {
   if (!CONFIG.influxUrl || !CONFIG.influxToken) {
     throw new Error("Adresse ou jeton absent du fichier .env.");
   }
-  const response = await fetch(`${CONFIG.influxUrl}/api/v2/buckets?limit=1`, {
+  const response = await fetch(`${baseUrl()}/api/v2/buckets?limit=1`, {
     headers: { Authorization: `Token ${CONFIG.influxToken}` },
     signal,
   });
@@ -212,6 +217,9 @@ export type HistoryField = "humidity" | "temperature" | "light";
 
 /** Un point d'un segment : un instant, une valeur, jamais null. */
 export type SegmentPoint = { time: number; value: number };
+
+/** Le nom du corrigé pour le même type. */
+export type ChartPoint = SegmentPoint;
 
 /**
  * Coupe la série en morceaux continus, un chemin SVG par morceau.
@@ -250,4 +258,54 @@ export function splitIntoSegments(
   if (courant.length > 0) segments.push(courant);
 
   return segments;
+}
+
+/**
+ * La santé de la base, sans jeton : /health répond un petit JSON dont le
+ * champ status vaut « pass » quand InfluxDB va bien. Ne dit rien du
+ * jeton : checkInflux, lui, le vérifie.
+ */
+export async function fetchInfluxHealth(signal?: AbortSignal): Promise<boolean> {
+  if (!CONFIG.influxUrl) throw new Error("EXPO_PUBLIC_INFLUX_URL absent du .env.");
+  const response = await fetch(`${baseUrl()}/health`, { signal });
+  if (!response.ok) throw new Error(`La base a répondu ${response.status}.`);
+  const body: unknown = await response.json();
+  return (
+    typeof body === "object" &&
+    body !== null &&
+    (body as { status?: unknown }).status === "pass"
+  );
+}
+
+/**
+ * Moyenne glissante sur un segment, size points de large.
+ * Calculée dans le téléphone, et c'est permis : elle porte sur les
+ * quelques centaines de points déjà agrégés, pas sur les mesures
+ * brutes. Elle ne traverse jamais un trou, puisqu'elle travaille
+ * segment par segment.
+ */
+export function movingAverage(segment: SegmentPoint[], size: number): SegmentPoint[] {
+  return segment.map((point, index) => {
+    const fenetre = segment.slice(Math.max(0, index - size + 1), index + 1);
+    const somme = fenetre.reduce((total, p) => total + p.value, 0);
+    return { time: point.time, value: somme / fenetre.length };
+  });
+}
+
+/**
+ * Compte les oublis d'arrosage : le nombre de fois où l'humidité passe
+ * SOUS le seuil bas. Un passage, pas un point : une plante restée
+ * assoiffée trois jours compte pour un oubli, pas pour trente-six.
+ */
+export function countDryPeriods(segments: SegmentPoint[][], threshold: number): number {
+  let count = 0;
+  for (const segment of segments) {
+    let etaitSec = false;
+    for (const point of segment) {
+      const estSec = point.value < threshold;
+      if (estSec && !etaitSec) count += 1;
+      etaitSec = estSec;
+    }
+  }
+  return count;
 }

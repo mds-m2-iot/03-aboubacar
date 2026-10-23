@@ -49,7 +49,13 @@ export default function Historique() {
   });
 
   let contenu;
-  if (query.isPending) {
+  if (query.isPending && query.fetchStatus === 'paused') {
+    // Hors ligne, TanStack Query met la requête en pause : une période
+    // jamais chargée doit le dire, pas tourner sans fin.
+    contenu = (
+      <Text style={styles.legende}>Pas de réseau, et cette période n’a jamais été chargée.</Text>
+    );
+  } else if (query.isPending) {
     contenu = <ActivityIndicator color={COULEURS.accent} style={styles.attente} />;
   } else if (query.isError) {
     contenu = <Text style={styles.erreur}>{query.error.message}</Text>;
@@ -64,8 +70,7 @@ export default function Historique() {
       <CourbeHumidite
         points={query.data}
         fin={query.dataUpdatedAt}
-        durationMs={PERIODS[period].durationMs}
-        everyMs={PERIODS[period].everyMs}
+        period={period}
       />
     );
   }

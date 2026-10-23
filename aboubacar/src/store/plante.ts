@@ -27,6 +27,7 @@ import {
   mesureVide,
   type ChargeMesures,
   type ChargeStatut,
+  type Commande,
   type Mesure,
 } from "../lib/contrat";
 import type { ChampBle } from "../lib/ble";
@@ -52,6 +53,10 @@ type EtatPlante = {
   statutPlante: ChargeStatut | null;
   /** Incrémenté à chaque demande de relance, app/_layout.tsx l'observe. */
   tentative: number;
+  /** Séance 4 · envoie une commande par le client MQTT actif, null hors source MQTT. */
+  publishCommand: ((commande: Commande) => boolean) | null;
+  /** Séance 4 · nombre de commandes en attente dans la file du disque. */
+  pendingCommands: number;
 
   definirSource: (source: Source) => void;
   definirEtatConnexion: (etat: EtatConnexion, detail?: string) => void;
@@ -61,6 +66,8 @@ type EtatPlante = {
   appliquerMesuresMqtt: (charge: ChargeMesures) => void;
   definirStatut: (statut: ChargeStatut) => void;
   relancer: () => void;
+  setPublishCommand: (publish: ((commande: Commande) => boolean) | null) => void;
+  setPendingCommands: (count: number) => void;
 };
 
 /** Un champ absent ou mal nommé reste null, il ne devient jamais zéro. */
@@ -75,6 +82,8 @@ export const usePlante = create<EtatPlante>()((set) => ({
   mesures: [],
   statutPlante: null,
   tentative: 0,
+  publishCommand: null,
+  pendingCommands: 0,
 
   definirSource(source) {
     set({ source, mesures: [], statutPlante: null });
@@ -128,5 +137,13 @@ export const usePlante = create<EtatPlante>()((set) => ({
 
   relancer() {
     set((etat) => ({ tentative: etat.tentative + 1 }));
+  },
+
+  setPublishCommand(publish) {
+    set({ publishCommand: publish });
+  },
+
+  setPendingCommands(count) {
+    set({ pendingCommands: count });
   },
 }));

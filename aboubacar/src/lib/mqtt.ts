@@ -26,10 +26,12 @@
 import mqtt, { type IClientOptions, type MqttClient } from "mqtt";
 
 import {
+  sujet,
   sujetJoker,
   suffixeDepuisSujet,
   type ChargeMesures,
   type ChargeStatut,
+  type Commande,
 } from "./contrat";
 import type { EtatConnexion } from "./lien";
 
@@ -55,6 +57,8 @@ export type OptionsMqtt = {
 export interface ClientMqtt {
   demarrer: () => void;
   arreter: () => void;
+  /** Séance 4 · publie une commande sur « cmd ». false si la connexion n'est pas établie. */
+  publishCommand: (commande: Commande) => boolean;
 }
 
 /** mqtt.js retente toutes les cinq secondes après une coupure. */
@@ -351,5 +355,24 @@ export function creerClientMqtt(
     rappels.surEtat("inactive");
   }
 
-  return { demarrer, arreter };
+  /**
+   * Séance 4 · publie une commande, seulement si la connexion est établie.
+   *
+   * Pourquoi tester connected : hors connexion, mqtt.js accepterait le
+   * message et le garderait EN MÉMOIRE jusqu'au retour du broker. Une
+   * application tuée en arrière-plan le perdrait sans rien dire. On
+   * préfère rendre false, et laisser l'appelant écrire la commande dans
+   * la file du disque (lib/command-queue.ts).
+   *
+   * QoS 1 : la carte doit recevoir la commande au moins une fois. Une
+   * commande perdue en route ne se voit pas, contrairement à une mesure
+   * répétée toutes les deux secondes.
+   */
+  function publishCommand(commande: Commande): boolean {
+    if (arrete || !client || !client.connected) return false;
+    client.publish(sujet(options.idBinome, "cmd"), JSON.stringify(commande), { qos: 1 });
+    return true;
+  }
+
+  return { demarrer, arreter, publishCommand };
 }

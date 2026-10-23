@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { creerPiloteBle } from "../lib/ble";
+import { loadQueue, replayQueue } from "../lib/command-queue";
 import { CONFIG } from "../lib/config";
 import { FICHE } from "../lib/fiche";
 import { creerClientMqtt } from "../lib/mqtt";
@@ -45,12 +46,47 @@ function useSource(): void {
       },
     );
     client.demarrer();
-    return () => client.arreter();
+    // Séance 4 · les écrans envoient leurs commandes par ce client.
+    usePlante.getState().setPublishCommand(client.publishCommand);
+    return () => {
+      usePlante.getState().setPublishCommand(null);
+      client.arreter();
+    };
   }, [source, tentative]);
+}
+
+/**
+ * Séance 4 · rejoue la file des commandes dès que le BROKER répond.
+ *
+ * Pourquoi pas au retour du réseau : le réseau revenu ne veut pas dire
+ * broker joignable. Le WiFi d'un hôtel répond, mais sa page de
+ * connexion bloque tout le reste. On attend donc l'état « connectee »,
+ * qui vient du broker lui-même.
+ */
+function useReplayQueue(): void {
+  useEffect(() => {
+    // Au démarrage, la file du disque peut déjà contenir des commandes.
+    void loadQueue().then((queue) => usePlante.getState().setPendingCommands(queue.length));
+
+    return usePlante.subscribe((state, previous) => {
+      if (state.etatConnexion !== "connectee" || previous.etatConnexion === "connectee") return;
+      const publish = state.publishCommand;
+      if (!publish) return;
+      void replayQueue(publish).then((result) => {
+        usePlante.getState().setPendingCommands(result.left);
+        if (result.sent > 0 || result.dropped > 0) {
+          console.log(
+            `[file] ${result.sent} commande(s) rejouée(s), ${result.dropped} périmée(s) jetée(s)`,
+          );
+        }
+      });
+    });
+  }, []);
 }
 
 export default function RootLayout() {
   useSource();
+  useReplayQueue();
 
   return (
     <PersistQueryClientProvider
