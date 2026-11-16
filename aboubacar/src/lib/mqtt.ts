@@ -36,6 +36,7 @@ import {
 } from "./contrat";
 import type { EtatConnexion } from "./lien";
 import { parsePlace } from "./place";
+import { parsePlantTopic } from "./plants";
 
 /** Ce que le client raconte au reste de l'application, via le magasin. */
 export type RappelsMqtt = {
@@ -44,6 +45,8 @@ export type RappelsMqtt = {
   surMesures: (charge: ChargeMesures) => void;
   /** L'objet du sujet « statut », testament du broker compris. */
   surStatut: (charge: ChargeStatut) => void;
+  /** Séance 6 · les mesures d'une AUTRE plante suivie, avec son identifiant. */
+  onPlantMeasures?: (id: string, charge: ChargeMesures) => void;
   /** Séance 6 · le lieu d'une plante de la promo, null quand elle est retirée de la carte. */
   onPlace?: (id: string, place: ChargeLieu | null) => void;
   /** Séance 6 · les mesures de toute la promo, seulement pendant que la carte est ouverte. */
@@ -65,6 +68,8 @@ export interface ClientMqtt {
   arreter: () => void;
   /** Séance 4 · publie une commande sur « cmd ». false si la connexion n'est pas établie. */
   publishCommand: (commande: Commande) => boolean;
+  /** Séance 6 · la liste complète des autres plantes à écouter. Sans reconnexion. */
+  follow: (ids: readonly string[]) => void;
   /** Séance 6 · écoute les mesures de toute la promo, pour la carte. */
   watchMap: (on: boolean) => void;
   /** Séance 6 · publie le lieu, retenu ; null l'efface. false si la connexion n'est pas établie. */
@@ -124,6 +129,10 @@ export function creerClientMqtt(
   // tentative suivante. Sans lui, « connexion en cours » efface la seule
   // phrase qui disait quoi corriger.
   let dernierMotif: string | null = null;
+  // Séance 6 · les autres plantes écoutées. Un Set, pour comparer
+  // l'ancienne liste et la nouvelle sans doublon.
+  const followed = new Set<string>();
+  const sujetMesuresDe = (id: string) => `plante/${id}/mesures`;
   // Séance 6 · la carte : tous les lieux, tout le temps (des messages
   // retenus, minuscules), et toutes les mesures seulement à la demande.
   const SUJET_LIEUX = "plante/+/lieu";
@@ -222,6 +231,10 @@ export function creerClientMqtt(
     c.on('connect', () => {
       dernierMotif = null;
       signaler('connectee');
+      // Séance 6 · clean vaut true : le broker oublie nos abonnements à
+      // chaque connexion. Ceux des autres plantes se refont ici, sinon
+      // la liste se tait après la première coupure de réseau.
+      for (const id of followed) c.subscribe(sujetMesuresDe(id), { qos: 0 });
       // Séance 6 · les lieux de toutes les plantes, pour la carte
       c.subscribe(SUJET_LIEUX, { qos: 1 });
       if (watchingMap) c.subscribe(SUJET_TOUTES_MESURES, { qos: 0 });
@@ -408,15 +421,14 @@ export function creerClientMqtt(
   }
 
   /**
-   * Séance 6 · aiguille les lieux, et les mesures des AUTRES plantes.
+   * Séance 6 · aiguille ce qui vient des AUTRES plantes, et des lieux.
    * Rend true quand le message est traité ici ; false pour laisser
    * surMessage s'occuper de TA plante, exactement comme avant.
    */
   function routeOtherPlant(topic: string, charge: { toString(): string }): boolean {
-    // plante/<id>/<suffixe> : on découpe le sujet pour savoir de qui il parle.
-    const parts = topic.split("/");
-    if (parts.length !== 3 || parts[0] !== "plante") return false;
-    const [, id, suffix] = parts;
+    const parsed = parsePlantTopic(topic);
+    if (!parsed) return false;
+    const { id, suffix } = parsed;
     const raw = charge.toString();
     if (suffix === "lieu") {
       rappels.onPlace?.(id, parsePlace(raw));
@@ -429,8 +441,37 @@ export function creerClientMqtt(
         // illisible : la carte garde l'ancienne humeur
       }
     }
-    // Ta plante continue son chemin habituel ; les autres s'arrêtent ici.
-    return id !== options.idBinome;
+    if (id === options.idBinome) return false;
+    if (suffix === "mesures" && followed.has(id)) {
+      try {
+        rappels.onPlantMeasures?.(id, JSON.parse(raw) as ChargeMesures);
+      } catch {
+        // Un message illisible s'ignore, comme pour ta plante.
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Séance 6 · reçoit la liste COMPLÈTE des plantes à suivre, et ne fait
+   * que la différence : s'abonner aux nouvelles, se désabonner des
+   * retirées. Pas de reconnexion, donc pas d'écran « connexion en cours »
+   * à chaque ajout. Ta propre plante est écartée : elle est déjà écoutée.
+   */
+  function follow(ids: readonly string[]): void {
+    const wanted = new Set(ids.filter((id) => id !== options.idBinome));
+    for (const id of followed) {
+      if (!wanted.has(id)) {
+        followed.delete(id);
+        if (client?.connected) client.unsubscribe(sujetMesuresDe(id));
+      }
+    }
+    for (const id of wanted) {
+      if (!followed.has(id)) {
+        followed.add(id);
+        if (client?.connected) client.subscribe(sujetMesuresDe(id), { qos: 0 });
+      }
+    }
   }
 
   /** Séance 6 · ouvre ou ferme l'écoute de toute la promo. */
@@ -442,5 +483,5 @@ export function creerClientMqtt(
     else client.unsubscribe(SUJET_TOUTES_MESURES);
   }
 
-  return { demarrer, arreter, publishCommand, watchMap, publishPlace };
+  return { demarrer, arreter, publishCommand, follow, watchMap, publishPlace };
 }

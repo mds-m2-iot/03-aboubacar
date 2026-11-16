@@ -32,6 +32,8 @@ import {
 } from "../lib/contrat";
 import type { ChampBle } from "../lib/ble";
 import type { EtatConnexion } from "../lib/lien";
+import { saveTrait, type Trait } from "../lib/personality";
+import { saveSource } from "../lib/source";
 
 /** Moins d'une seconde d'écart : même cycle de mesure. */
 const FENETRE_CYCLE_MS = 1000;
@@ -68,6 +70,9 @@ type EtatPlante = {
   relancer: () => void;
   setPublishCommand: (publish: ((commande: Commande) => boolean) | null) => void;
   setPendingCommands: (count: number) => void;
+  /** Séance 6 · le caractère choisi dans les réglages. */
+  trait: Trait;
+  setTrait: (trait: Trait) => void;
 };
 
 /** Un champ absent ou mal nommé reste null, il ne devient jamais zéro. */
@@ -84,9 +89,17 @@ export const usePlante = create<EtatPlante>()((set) => ({
   tentative: 0,
   publishCommand: null,
   pendingCommands: 0,
+  trait: "cheerful",
 
   definirSource(source) {
     set({ source, mesures: [], statutPlante: null });
+    // Séance 6 : la source survit à la fermeture de l'application.
+    void saveSource(source);
+  },
+
+  setTrait(trait) {
+    set({ trait });
+    void saveTrait(trait);
   },
 
   definirEtatConnexion(etat, detail) {

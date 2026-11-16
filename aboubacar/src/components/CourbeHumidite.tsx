@@ -11,6 +11,7 @@ import Svg, {
   Text as SvgText,
 } from 'react-native-svg';
 
+import type { Seuils } from '../lib/contrat';
 import { FICHE } from '../lib/fiche';
 import {
   countDryPeriods,
@@ -45,6 +46,8 @@ type Props = {
   /** Fin de l'axe des temps : query.dataUpdatedAt. */
   fin: number;
   period: Period;
+  /** Séance 6 · la zone de confort tracée. Par défaut, celle de ta fiche. */
+  seuils?: Seuils;
 };
 
 /** M sur le premier point, L vers chacun des suivants. */
@@ -112,7 +115,7 @@ function libelleInstant(time: number, durationMs: number): string {
   return `${JOURS[d.getDay()]} ${d.getDate()} · ${heure}`;
 }
 
-export function CourbeHumidite({ points, fin, period }: Props) {
+export function CourbeHumidite({ points, fin, period, seuils = FICHE.seuils }: Props) {
   const { durationMs, everyMs, every } = PERIODS[period];
   const [largeur, setLargeur] = useState(0);
   const [doigtX, setDoigtX] = useState<number | null>(null);
@@ -143,7 +146,7 @@ export function CourbeHumidite({ points, fin, period }: Props) {
   const min = Math.min(...valeurs.map((p) => p.value));
   const max = Math.max(...valeurs.map((p) => p.value));
   const moyenne = valeurs.reduce((s, p) => s + p.value, 0) / Math.max(valeurs.length, 1);
-  const { bas, haut } = FICHE.seuils;
+  const { bas, haut } = seuils;
   const dansLaZone = affiche ? affiche.value >= bas && affiche.value <= haut : false;
 
   // La moyenne glissante, calculée segment par segment : elle ne

@@ -13,13 +13,9 @@ export default function TabLayout() {
         <NativeTabs.Trigger.Label>Historique</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf="chart.xyaxis.line" md="show_chart" />
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="fiche-plante">
-        <NativeTabs.Trigger.Label>Fiche plante</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon sf="leaf.fill" md="eco" />
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="profil">
-        <NativeTabs.Trigger.Label>Profil</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon sf="person.fill" md="person" />
+      <NativeTabs.Trigger name="plantes">
+        <NativeTabs.Trigger.Label>Mes plantes</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="square.grid.2x2.fill" md="grid_view" />
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="reglage">
         <NativeTabs.Trigger.Label>Réglages</NativeTabs.Trigger.Label>

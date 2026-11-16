@@ -9,6 +9,7 @@ import { prefixeSujet, type Commande } from '../../lib/contrat';
 import { FICHE } from '../../lib/fiche';
 import { checkInflux, fetchInfluxHealth } from '../../lib/influx';
 import { libelleEtat } from '../../lib/lien';
+import { TRAITS, type Trait } from '../../lib/personality';
 import { COULEURS, ESPACES, RAYONS } from '../../lib/theme';
 import { Fond } from '../../components/Fond';
 import { Verre } from '../../components/Verre';
@@ -100,6 +101,38 @@ function CommandesCarte() {
   );
 }
 
+/** Séance 6 · le caractère de la plante, gardé sur le téléphone par le magasin. */
+function Caractere() {
+  const trait = usePlante((etat) => etat.trait);
+  const setTrait = usePlante((etat) => etat.setTrait);
+  return (
+    <Verre style={styles.carte}>
+      <Text style={styles.titreCarte}>CARACTÈRE</Text>
+      <View style={styles.choixLigne}>
+        {(Object.keys(TRAITS) as Trait[]).map((t) => {
+          const actif = t === trait;
+          return (
+            <Pressable
+              key={t}
+              onPress={() => setTrait(t)}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: actif }}
+              style={[styles.choix, actif && styles.choixActif]}
+            >
+              <Text style={[styles.choixTexte, actif && styles.choixTexteActif]}>
+                {TRAITS[t].label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      <Text style={styles.legende}>
+        La même humeur, dite autrement. Touche la plante sur l’accueil pour l’entendre.
+      </Text>
+    </Verre>
+  );
+}
+
 export default function Reglages() {
   const etatConnexion = usePlante((etat) => etat.etatConnexion);
   // Deux questions séparées, comme dans le corrigé : la base répond-elle
@@ -153,6 +186,8 @@ export default function Reglages() {
             marche de partout, en 4G comprise.
           </Text>
         </Verre>
+
+        <Caractere />
 
         <Verre style={styles.carte}>
           <Text style={styles.titreCarte}>BLUETOOTH</Text>

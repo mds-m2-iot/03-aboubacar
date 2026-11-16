@@ -1,6 +1,6 @@
 import { Link } from 'expo-router';
-import { useMemo } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, Vibration, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { formaterAnciennete, formaterValeur, useMaintenant } from '../../lib/affichage';
@@ -15,6 +15,7 @@ import {
   messageHumeur,
 } from '../../lib/humeur';
 import { libelleEtat } from '../../lib/lien';
+import { greeting, momentOfDay, touchLine, VIBRATIONS } from '../../lib/personality';
 import { COULEURS, ESPACES, RAYONS } from '../../lib/theme';
 import { usePlante } from '../../store/plante';
 import { Fond } from '../../components/Fond';
@@ -38,6 +39,26 @@ export default function Accueil() {
 
   const mesure = useMemo(() => mesureConsolidee(mesures), [mesures]);
   const humeur = etatAffiche(mesure, FICHE.seuils, maintenant);
+  // Séance 6 · la personnalité. Sans toucher, la plante salue selon
+  // l'heure ; touchée, elle répond selon son humeur et son caractère.
+  const trait = usePlante((etat) => etat.trait);
+  const [touches, setTouches] = useState(0);
+  const bulle =
+    touches === 0 ? greeting(trait, momentOfDay(maintenant)) : touchLine(trait, humeur, touches - 1);
+
+  function quandOnTouche(): void {
+    setTouches((n) => n + 1);
+    Vibration.vibrate(VIBRATIONS[humeur]);
+  }
+
+  // Huit secondes sans toucher, et la plante reprend sa salutation.
+  // Chaque nouveau toucher relance le minuteur.
+  useEffect(() => {
+    if (touches === 0) return;
+    const minuteur = setTimeout(() => setTouches(0), 8000);
+    return () => clearTimeout(minuteur);
+  }, [touches]);
+
   const peutRelancer = etatConnexion === 'perdue' || etatConnexion === 'erreur' || etatConnexion === 'inactive';
 
   return (
@@ -50,10 +71,19 @@ export default function Accueil() {
         {FICHE.espece} · {FICHE.nomLatin}
       </Text>
 
-      <Verre style={styles.carte} teinte={`${couleurHumeur(humeur)}22`}>
+      <Pressable
+        onPress={quandOnTouche}
+        accessibilityRole="button"
+        accessibilityLabel={`Humeur de ${FICHE.nom} : ${libelleHumeur(humeur)}`}
+        accessibilityHint="Touche la plante pour qu’elle te réponde"
+      >
+      <Verre style={styles.carte} teinte={`${couleurHumeur(humeur)}22`} interactif>
         <View style={styles.enTeteHumeur}>
           <View style={[styles.pastille, { backgroundColor: couleurHumeur(humeur) }]} />
           <Text style={styles.titreCarte}>SON HUMEUR</Text>
+        </View>
+        <View style={styles.bulle} accessibilityLiveRegion="polite">
+          <Text style={styles.texteBulle}>{bulle}</Text>
         </View>
         <Text style={styles.humeur}>{libelleHumeur(humeur)}</Text>
         <Text style={styles.message}>« {messageHumeur(humeur, FICHE.messages)} »</Text>
@@ -69,6 +99,7 @@ export default function Accueil() {
           </Text>
         )}
       </Verre>
+      </Pressable>
 
       <Verre style={styles.carte}>
         <Text style={styles.titreCarte}>
@@ -116,6 +147,15 @@ const styles = StyleSheet.create({
   carte: { marginTop: ESPACES.grand, padding: ESPACES.grand },
   enTeteHumeur: { flexDirection: 'row', alignItems: 'center', gap: ESPACES.petit },
   pastille: { width: 10, height: 10, borderRadius: 5 },
+  bulle: {
+    alignSelf: 'flex-start',
+    marginTop: ESPACES.moyen,
+    paddingVertical: ESPACES.petit,
+    paddingHorizontal: ESPACES.moyen,
+    borderRadius: RAYONS.carte,
+    backgroundColor: COULEURS.fond,
+  },
+  texteBulle: { fontSize: 15, fontStyle: 'italic', color: COULEURS.texte },
   titreCarte: { fontSize: 12, fontWeight: '600', letterSpacing: 1.2, color: COULEURS.gris },
   humeur: { marginTop: ESPACES.petit, fontSize: 32, fontWeight: '800', color: COULEURS.texte },
   message: { marginTop: ESPACES.petit, fontSize: 18, fontStyle: 'italic', color: COULEURS.texte },

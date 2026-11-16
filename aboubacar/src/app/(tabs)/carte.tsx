@@ -50,6 +50,7 @@ import { buildPlace, MAP_CENTER, roundCoordinate } from "../../lib/place";
 import { COULEURS, ESPACES, RAYONS } from "../../lib/theme";
 import { useMap } from "../../store/map";
 import { usePlante } from "../../store/plante";
+import { usePlants } from "../../store/plants";
 
 // Le jeton PUBLIC (pk.…) suffit pour afficher une carte. Il est lu une
 // fois, au chargement du module : sans lui, Mapbox n'affiche rien.
@@ -65,10 +66,12 @@ export default function Carte() {
   const measures = useMap((s) => s.measures);
   const publishPlace = useMap((s) => s.publishPlace);
   const mesures = usePlante((s) => s.mesures);
+  const followed = usePlants((s) => s.plants);
   const maintenant = useMaintenant(5000);
 
   const [draft, setDraft] = useState<Point | null>(null);
   const [consent, setConsent] = useState(false);
+  const [onlyFollowed, setOnlyFollowed] = useState(false);
   const [latText, setLatText] = useState("");
   const [lonText, setLonText] = useState("");
   const [message, setMessage] = useState<string | null>(null);
@@ -84,11 +87,14 @@ export default function Carte() {
 
   // Le GeoJSON des plantes : un point par plante qui a publié son lieu,
   // coloré par son humeur. Ta plante prend TES seuils et TES mesures ; les
-  // autres, les seuils du contrat.
+  // autres, les seuils du contrat. Le bonus « mes plantes seulement »
+  // filtre sur la liste choisie.
   const ownMeasure = useMemo(() => mesureConsolidee(mesures), [mesures]);
   const plantsShape = useMemo<GeoJSON.FeatureCollection>(() => {
-    const features: GeoJSON.Feature[] = Object.entries(places).map(
-      ([id, place]) => {
+    const keep = new Set(followed.map((p) => p.id));
+    const features: GeoJSON.Feature[] = Object.entries(places)
+      .filter(([id]) => !onlyFollowed || id === CONFIG.idBinome || keep.has(id))
+      .map(([id, place]) => {
         const own = id === CONFIG.idBinome;
         const seuils = SEUILS_DEFAUT;
         const mood = own
@@ -103,10 +109,9 @@ export default function Carte() {
             label: `${place.nom || id} · ${libelleHumeur(mood)}`,
           },
         };
-      },
-    );
+      });
     return { type: "FeatureCollection", features };
-  }, [places, measures, ownMeasure, maintenant]);
+  }, [places, measures, followed, onlyFollowed, ownMeasure, maintenant]);
 
   const draftShape = useMemo<GeoJSON.FeatureCollection>(
     () => ({
@@ -167,7 +172,9 @@ export default function Carte() {
   }
 
   return (
-    <SafeAreaView style={styles.page} edges={["top"]}>
+    // edges bas aussi : la barre d'onglets native flotte au-dessus du
+    // contenu, sans cette marge elle cache les boutons « Placer ».
+    <SafeAreaView style={styles.page} edges={["top", "bottom"]}>
       <Text style={styles.titre}>La carte des plantes</Text>
       <View style={styles.filet} />
 
@@ -270,6 +277,16 @@ export default function Carte() {
         <Text style={styles.texte}>
           J’accepte que l’endroit approximatif de ma plante soit visible par la
           classe.
+        </Text>
+      </View>
+      <View style={styles.ligne}>
+        <Switch
+          value={onlyFollowed}
+          onValueChange={setOnlyFollowed}
+          accessibilityLabel="Mes plantes seulement"
+        />
+        <Text style={styles.texte}>
+          Seulement ma plante et celles de ma liste.
         </Text>
       </View>
 

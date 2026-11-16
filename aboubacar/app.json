@@ -12,7 +12,8 @@
       "infoPlist": {
         "NSBluetoothAlwaysUsageDescription": "L'application lit les mesures de la plante en Bluetooth"
       },
-      "bundleIdentifier": "dev.mds.plante.binome03"
+      "bundleIdentifier": "dev.mds.plante.binome03",
+      "appleTeamId": "F8JSQRXV87"
     },
     "android": {
       "package": "dev.mds.plante",
