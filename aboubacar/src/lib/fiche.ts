@@ -11,6 +11,7 @@
 // =====================================================================
 import type { Seuils } from './contrat';
 import type { Humeur } from './humeur';
+import type { BesoinsPlante, Probleme } from './types-epreuve';
 
 export type FichePlante = {
   /** Identifiant court, celui qui voyage dans l'URL de la route. */
@@ -37,11 +38,18 @@ export type FichePlante = {
    * plus : l'écran de la carte et le téléphone disent la même chose.
    */
   messages: Record<Humeur, string>;
+  /** Tout ce dont elle a besoin, pour le diagnostic (imposée 1). */
+  besoins: BesoinsPlante;
+  /** Une phrase par cas du diagnostic : les 7 problèmes, ok et inconnu. */
+  phrases: Record<Probleme | 'ok' | 'inconnu', string>;
   exposition: string;
   arrosage: string;
   /** D'où viennent les chiffres. La question tombe en soutenance. */
   source: string;
 };
+
+// Les seuils d'humidité, écrits une seule fois : seuils et besoins les partagent.
+const SEUILS = { bas: 35, haut: 70 };
 
 export const FICHE: FichePlante = {
   id: 'passiflore',
@@ -49,7 +57,7 @@ export const FICHE: FichePlante = {
   espece: 'Passiflore bleue',
   nomLatin: 'Passiflora caerulea',
   nomAnnonce: 'Aboubacar',
-  seuils: { bas: 35, haut: 70 },
+  seuils: SEUILS,
   pourquoiBas: 'En croissance elle veut un sol qui reste frais, sans jamais sécher à cœur.',
   pourquoiHaut:
     "Elle craint l'eau stagnante bien plus que la sécheresse, donc jamais de soucoupe pleine.",
@@ -59,6 +67,22 @@ export const FICHE: FichePlante = {
     heureuse: 'Tout va bien, merci',
     soif: "J'ai soif",
     assoiffee: "Au secours, de l'eau",
+  },
+  besoins: {
+    humidite: SEUILS,
+    temperature: { min: 10, max: 30 }, // °C, À VÉRIFIER sur une source datée
+    lumiere: { min: 40 }, // %, de jour (mi-ombre), À VÉRIFIER
+  },
+  phrases: {
+    assoiffee: "Au secours, de l'eau, je sèche sur pied !",
+    noyee: 'Je me noie, vide ma soucoupe !',
+    froid: "Brr, j'ai froid, rentre-moi au chaud.",
+    chaud: "Il fait trop chaud, mets-moi à l'ombre.",
+    soif: "J'ai un peu soif.",
+    reput: "Merci, j'ai assez bu.",
+    sombre: 'Il fait trop sombre, approche-moi de la fenêtre.',
+    ok: 'Tout va bien, merci !',
+    inconnu: "Je ne sais pas comment je vais : pas de nouvelles de ma carte.",
   },
   exposition: 'Soleil à mi-ombre',
   arrosage: "Abondant l'été, très réduit l'hiver",
