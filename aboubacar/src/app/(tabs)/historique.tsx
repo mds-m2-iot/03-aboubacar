@@ -38,7 +38,8 @@ export default function Historique() {
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: COULEURS.fond },
-  contenu: { padding: ESPACES.grand, paddingBottom: ESPACES.grand * 2 },
+  // Marge du bas : la barre d'onglets flotte par-dessus, il faut pouvoir défiler au-delà.
+  contenu: { padding: ESPACES.grand, paddingBottom: 140 },
   titre: {
     fontSize: 36,
     fontWeight: "800",
