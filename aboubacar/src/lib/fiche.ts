@@ -70,8 +70,8 @@ export const FICHE: FichePlante = {
   },
   besoins: {
     humidite: SEUILS,
-    temperature: { min: 10, max: 30 }, // °C, À VÉRIFIER sur une source datée
-    lumiere: { min: 40 }, // %, de jour (mi-ombre), À VÉRIFIER
+    temperature: { min: 10, max: 27 }, // °C : idéal 18 à 27, jamais sous 10 (source)
+    lumiere: { min: 40 }, // %, de jour : lumière vive, tolère la mi-ombre (source)
   },
   phrases: {
     assoiffee: "Au secours, de l'eau, je sèche sur pied !",
@@ -86,7 +86,9 @@ export const FICHE: FichePlante = {
   },
   exposition: 'Soleil à mi-ombre',
   arrosage: "Abondant l'été, très réduit l'hiver",
-  source: 'aujardin.info, fiche Passiflora caerulea, consultée le 22 septembre 2026',
+  source:
+    'Seuils : aujardin.info, fiche Passiflora caerulea, consultée le 22 septembre 2026. ' +
+    'Température et lumière : The Spruce, « How to Grow and Care for Passionflower Indoors » (via Yahoo Lifestyle), consultée le 18 novembre 2026.',
 };
 
 /**
