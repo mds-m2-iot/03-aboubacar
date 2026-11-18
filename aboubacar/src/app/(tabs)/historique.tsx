@@ -11,12 +11,11 @@ import { MAINTENANT_EXEMPLE, SEMAINE_EXEMPLE } from "../../lib/exemple";
 import { FICHE } from "../../lib/fiche";
 import { nettoyerSerie } from "../../lib/serie";
 import { SaSemaine } from "../../components/SaSemaine";
+import { CarteTrous } from "../../components/CarteTrous";
 
-// La semaine d'exemple, nettoyée puis résumée jour par jour (calculé une fois).
-const BILAN = bilanParJour(
-  nettoyerSerie(SEMAINE_EXEMPLE, MAINTENANT_EXEMPLE).points,
-  FICHE.seuils,
-);
+// La semaine d'exemple nettoyée (imposée 2), puis résumée jour par jour (imposée 3).
+const SERIE = nettoyerSerie(SEMAINE_EXEMPLE, MAINTENANT_EXEMPLE);
+const BILAN = bilanParJour(SERIE.points, FICHE.seuils);
 
 // Allégé en séance 6 : la courbe vit dans components/BlocHistorique.tsx,
 // pour servir aussi aux plantes suivies. Ici, seulement TON identifiant.
@@ -28,6 +27,7 @@ export default function Historique() {
         <Text style={styles.titre}>Historique</Text>
         <View style={styles.filet} />
         <BlocHistorique pairId={CONFIG.idBinome} />
+        <CarteTrous serie={SERIE} />
         <Text style={styles.sousTitre}>Sa semaine</Text>
         <SaSemaine bilan={BILAN} />
         <BoutonPartager bilan={BILAN} />
