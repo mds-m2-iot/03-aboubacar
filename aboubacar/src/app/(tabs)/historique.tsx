@@ -10,6 +10,7 @@ import { bilanParJour } from "../../lib/bilan";
 import { MAINTENANT_EXEMPLE, SEMAINE_EXEMPLE } from "../../lib/exemple";
 import { FICHE } from "../../lib/fiche";
 import { nettoyerSerie } from "../../lib/serie";
+import { SaSemaine } from "../../components/SaSemaine";
 
 // La semaine d'exemple, nettoyée puis résumée jour par jour (calculé une fois).
 const BILAN = bilanParJour(
@@ -28,6 +29,7 @@ export default function Historique() {
         <View style={styles.filet} />
         <BlocHistorique pairId={CONFIG.idBinome} />
         <Text style={styles.sousTitre}>Sa semaine</Text>
+        <SaSemaine bilan={BILAN} />
         <BoutonPartager bilan={BILAN} />
       </ScrollView>
     </SafeAreaView>
