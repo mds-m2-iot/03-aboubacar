@@ -21,6 +21,9 @@ function jourLocal(debut: number): string {
   return `${date.getFullYear()}-${mois}-${jour}`;
 }
 
+// bilanParJour : résume la série jour par jour.
+// Étape 1 : range les humidités dans leur jour et compte les arrosages.
+// Étape 2 : calcule pour chaque jour min, max, moyenne et heures hors confort.
 export function bilanParJour(points: readonly PointHoraire[], seuils: Seuils): BilanJour[] {
   // Dictionnaire "2026-09-29" → ce qu'on a vu ce jour-là.
   const parJour = new Map<string, Jour>();

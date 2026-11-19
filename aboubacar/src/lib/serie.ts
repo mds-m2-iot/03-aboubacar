@@ -21,6 +21,9 @@ function caseVide(debut: number): PointHoraire {
   return { debut, humidite: null, temperature: null, lumiere: null };
 }
 
+// nettoyerSerie : transforme les mesures brutes en une série propre.
+// Une case par heure (vide si rien), valeurs absurdes à null, liste des
+// trous de 3 h ou plus, et couverture (part des heures avec humidité).
 export function nettoyerSerie(brut: readonly PointHoraire[], maintenant: number): SerieNettoyee {
   // Dictionnaire heure → point : une seule entrée par heure.
   const parHeure = new Map<number, PointHoraire>();

@@ -1,3 +1,4 @@
+// Bouton « Partager la semaine » de l'historique (option B).
 import { Alert, Pressable, Share, StyleSheet, Text } from "react-native";
 
 import { versCsv } from "../lib/export";
@@ -7,6 +8,8 @@ import type { BilanJour } from "../lib/types-epreuve";
 // Ce que le bouton reçoit de l'écran : le bilan de la semaine.
 type Props = { bilan: readonly BilanJour[] };
 
+// BoutonPartager : au toucher, transforme le bilan en CSV avec versCsv
+// et ouvre le partage du téléphone (Mail, Notes, Fichiers…).
 export function BoutonPartager({ bilan }: Props) {
   // Ouvre le partage du téléphone avec le CSV dedans.
   async function partager() {

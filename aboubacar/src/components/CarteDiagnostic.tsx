@@ -1,3 +1,4 @@
+// Carte « Son diagnostic » de l'accueil (imposée 1).
 import { StyleSheet, Text } from "react-native";
 
 import type { Mesure } from "../lib/contrat";
@@ -28,6 +29,9 @@ const NOMS_GRANDEURS: Record<Grandeur, string> = {
   lumiere: "lumière",
 };
 
+// CarteDiagnostic : appelle diagnostiquer, puis affiche le problème le plus
+// urgent avec la phrase de la plante, le nombre d'autres soucis et ce qui
+// n'a pas été vérifié.
 export function CarteDiagnostic({ mesure, maintenant }: Props) {
   const diagnostic = diagnostiquer(mesure, FICHE.besoins, maintenant);
   const urgent = diagnostic.problemes[0]; // déjà trié : le premier est le plus urgent

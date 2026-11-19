@@ -1,3 +1,4 @@
+// Section « Sa semaine » de l'historique (imposée 3).
 import { StyleSheet, Text, View } from "react-native";
 
 import { formaterValeur } from "../lib/affichage";
@@ -26,6 +27,8 @@ function resume(jour: BilanJour): string {
   return `De ${min} à ${max} %, moyenne ${moyenne} %\n${jour.heuresHorsConfort} h hors confort · ${jour.arrosages} arrosage(s)`;
 }
 
+// SaSemaine : une ligne par jour du bilan (nom du jour, détail), avec
+// « Incomplet » si le jour a moins de 18 h mesurées.
 export function SaSemaine({ bilan }: Props) {
   // Aucun jour : on le dit, pas d'écran vide.
   if (bilan.length === 0) {

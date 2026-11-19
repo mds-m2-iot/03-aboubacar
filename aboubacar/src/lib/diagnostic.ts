@@ -26,7 +26,9 @@ const HEURE_LEVER = 9;
 // Heure où finit le jour (18 h exclue).
 const HEURE_COUCHER = 18;
 
-// La fonction : elle reçoit la mesure, les besoins et l'heure actuelle.
+// diagnostiquer : à partir de la dernière mesure, dit comment va la plante.
+// Rend l'état (inconnu, ok ou soucis), les problèmes du plus urgent au moins
+// urgent, et les grandeurs qu'on n'a pas pu vérifier.
 export function diagnostiquer(
   mesure: Mesure | null, // la dernière mesure, ou null s'il n'y en a pas
   besoins: BesoinsPlante, // les besoins de la plante

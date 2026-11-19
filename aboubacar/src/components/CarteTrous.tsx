@@ -1,3 +1,4 @@
+// Carte « Ce qui manque » de l'historique (imposée 2).
 import { StyleSheet, Text } from "react-native";
 
 import { COULEURS, ESPACES } from "../lib/theme";
@@ -15,6 +16,8 @@ function phraseTrou(trou: Trou): string {
   return `Carte silencieuse ${trou.heures} h, ${jour} de ${debut.getHours()} h à ${fin.getHours()} h`;
 }
 
+// CarteTrous : affiche la couverture en % et une phrase par trou
+// (ou « Aucun trou » si la carte a tout envoyé).
 export function CarteTrous({ serie }: Props) {
   const couverture = Math.round(serie.couverture * 100); // 0,93 → 93
 
